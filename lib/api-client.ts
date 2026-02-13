@@ -8,6 +8,14 @@ import type {
   FinancialProfile,
 } from "@/types";
 
+// API input type for write operations (matches Zod schema - numbers)
+interface FinancialProfileInput {
+  monthlyIncomeTarget: number;
+  needsPercentage: number;
+  wantsPercentage: number;
+  futurePercentage: number;
+}
+
 const API_BASE = "/api/v1";
 
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<unknown> {
@@ -83,9 +91,9 @@ export const api = {
 
   financialProfile: {
     get: () => fetchWithAuth(`${API_BASE}/financial-profile`) as Promise<FinancialProfile>,
-    create: (data: Partial<FinancialProfile>) =>
+    create: (data: FinancialProfileInput) =>
       fetchWithAuth(`${API_BASE}/financial-profile`, { method: "POST", body: JSON.stringify(data) }) as Promise<FinancialProfile>,
-    update: (data: Partial<FinancialProfile>) =>
+    update: (data: Partial<FinancialProfileInput>) =>
       fetchWithAuth(`${API_BASE}/financial-profile`, { method: "PATCH", body: JSON.stringify(data) }) as Promise<FinancialProfile>,
   },
 

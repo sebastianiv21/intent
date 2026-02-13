@@ -23,8 +23,12 @@ function getStartDate(period: string): string {
 }
 
 // Aggregate transactions by category and type (@vercel js-combine-iterations)
+type TransactionWithCategory = typeof transactions.$inferSelect & {
+  category?: { name: string } | null;
+};
+
 function aggregateByCategory(
-  items: typeof transactions.$inferSelect[],
+  items: TransactionWithCategory[],
   type: 'expense' | 'income'
 ): Record<string, number> {
   return items.reduce((acc, t) => {
