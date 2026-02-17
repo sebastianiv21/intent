@@ -26,6 +26,20 @@ export default function OnboardingPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Check if user already has a financial profile
+  React.useEffect(() => {
+    const checkProfile = async () => {
+      try {
+        await api.financialProfile.get();
+        // Profile exists, redirect to home
+        router.push("/");
+      } catch {
+        // No profile, stay on onboarding
+      }
+    };
+    checkProfile();
+  }, [router]);
+
   const monthlyIncome = income === "" ? 0 : Number(income);
   const totalPercentage = needs + wants + future;
   const isValid = totalPercentage === 100 && monthlyIncome > 0;
