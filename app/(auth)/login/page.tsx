@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
-import { signIn } from "@/lib/auth-client";
+import { authClient, signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { GoogleIcon } from "@/components/icons";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,6 +46,27 @@ export default function LoginPage() {
           <CardTitle className="text-center text-2xl">Welcome back</CardTitle>
         </CardHeader>
         <CardContent>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() =>
+              authClient.signIn.social({
+                provider: "google",
+                callbackURL: "/",
+              })
+            }
+          >
+            <GoogleIcon className="mr-2 h-4 w-4" />
+            Sign in with Google
+          </Button>
+
+          <div className="relative my-4">
+            <Separator />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+              Or use email
+            </span>
+          </div>
+
           <form className="space-y-4" onSubmit={submit}>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -57,7 +80,6 @@ export default function LoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                autoFocus
               />
             </div>
             <div className="space-y-2">
@@ -77,15 +99,25 @@ export default function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   aria-label="Toggle password visibility"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button
+              type="submit"
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Signing in..." : "Sign In with Email"}
             </Button>
           </form>
+
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-primary">

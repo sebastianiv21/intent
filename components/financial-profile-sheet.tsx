@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Home, Coffee, PiggyBank, X, CheckCircle, Minus, Plus } from "lucide-react";
+import { X, CheckCircle, Minus, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,12 @@ import {
 import { api } from "@/lib/api-client";
 import type { FinancialProfile } from "@/types";
 import { getFontSizeClass, cn } from "@/lib/utils";
+import {
+  BUCKETS,
+  formatNumberWithCommas,
+  cleanNumber,
+  type BucketKey,
+} from "@/lib/finance-utils";
 
 interface FinancialProfileSheetProps {
   open: boolean;
@@ -22,46 +28,6 @@ interface FinancialProfileSheetProps {
   profile: FinancialProfile | null;
   onSuccess: () => void;
 }
-
-// Format number with thousand separators for display
-function formatNumberWithCommas(value: string): string {
-  if (!value) return "";
-  const [whole, decimal] = value.split(".");
-  const formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return decimal !== undefined ? `${formattedWhole}.${decimal}` : formattedWhole;
-}
-
-// Remove all non-numeric characters except decimal point
-function cleanNumber(value: string): string {
-  return value.replace(/[^\d.]/g, "");
-}
-
-const BUCKETS = [
-  {
-    key: "needs" as const,
-    label: "Needs",
-    icon: Home,
-    color: "#8b9a7e",
-    bgColor: "bg-needs",
-    textColor: "text-needs",
-  },
-  {
-    key: "wants" as const,
-    label: "Wants",
-    icon: Coffee,
-    color: "#c97a5a",
-    bgColor: "bg-wants",
-    textColor: "text-wants",
-  },
-  {
-    key: "future" as const,
-    label: "Future",
-    icon: PiggyBank,
-    color: "#a89562",
-    bgColor: "bg-future",
-    textColor: "text-future",
-  },
-];
 
 export function FinancialProfileSheet({
   open,
@@ -99,15 +65,15 @@ export function FinancialProfileSheet({
   const totalPercentage = needsPct + wantsPct + futurePct;
   const isValid = totalPercentage === 100;
 
-  // Simple percentage adjustment - no auto-balancing
-  const adjustPercentage = (key: string, delta: number) => {
-    if (key === "needs") {
-      setNeedsPct((prev) => Math.max(0, Math.min(100, prev + delta)));
-    } else if (key === "wants") {
-      setWantsPct((prev) => Math.max(0, Math.min(100, prev + delta)));
-    } else {
-      setFuturePct((prev) => Math.max(0, Math.min(100, prev + delta)));
-    }
+  const setters: Record<BucketKey, React.Dispatch<React.SetStateAction<number>>> = {
+    needs: setNeedsPct,
+    wants: setWantsPct,
+    future: setFuturePct,
+  };
+
+  const adjustPercentage = (key: BucketKey, delta: number) => {
+    const setPercentage = setters[key];
+    setPercentage((prev) => Math.max(0, Math.min(100, prev + delta)));
   };
 
   const handleSave = async () => {
