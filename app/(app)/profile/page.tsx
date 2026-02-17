@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -137,12 +138,19 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4 pt-2">
           {/* Avatar */}
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary/80 to-primary flex items-center justify-center text-3xl font-bold text-white shadow-lg">
-              {userInitial}
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-card border-2 border-border rounded-full flex items-center justify-center">
-              <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
-            </div>
+            {user?.image ? (
+              <Image
+                src={user.image}
+                alt={userName}
+                width={80}
+                height={80}
+                className="rounded-full shadow-lg object-cover"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary/80 to-primary flex items-center justify-center text-3xl font-bold text-white shadow-lg">
+                {userInitial}
+              </div>
+            )}
           </div>
 
           {/* User Info */}

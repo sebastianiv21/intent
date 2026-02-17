@@ -1,22 +1,28 @@
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { createAuthMiddleware } from 'better-auth/api';
-import { db } from './db';
-import { categories, user, session, account, verification } from './schema';
-import { DEFAULT_CATEGORIES } from './seed-data';
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
+import { db } from "./db";
+import { categories, user, session, account, verification } from "./schema";
+import { DEFAULT_CATEGORIES } from "./seed-data";
 
 export const auth = betterAuth({
+  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: "pg",
     schema: { user, session, account, verification },
   }),
   emailAndPassword: {
     enabled: true,
   },
-  socialProviders: {},
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path.startsWith('/sign-up')) {
+      if (ctx.path.startsWith("/sign-up")) {
         const newSession = ctx.context.newSession;
         if (newSession) {
           // Seed default categories for new user

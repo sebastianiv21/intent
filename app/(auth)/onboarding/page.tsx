@@ -2,14 +2,20 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Minus, Plus } from "lucide-react";
 
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const clamp = (value: number) => Math.max(0, Math.min(100, value));
+import { cn } from "@/lib/utils";
+import {
+  BUCKETS,
+  formatNumberWithCommas,
+  cleanNumber,
+  type BucketKey,
+} from "@/lib/finance-utils";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -20,38 +26,27 @@ export default function OnboardingPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const rebalance = (target: "needs" | "wants" | "future", value: number) => {
-    const nextValue = clamp(value);
-    const totals = { needs, wants, future };
-    totals[target] = nextValue;
-    const remaining = 100 - nextValue;
-    const others = (Object.keys(totals) as Array<"needs" | "wants" | "future">).filter(
-      (key) => key !== target,
-    );
-    const currentOtherTotal = others.reduce((sum, key) => sum + totals[key], 0);
-    if (currentOtherTotal === 0) {
-      const split = Math.floor(remaining / others.length);
-      const remainder = remaining - split * others.length;
-      totals[others[0]] = split + remainder;
-      totals[others[1]] = split;
-    } else {
-      let allocated = 0;
-      others.forEach((key, index) => {
-        if (index === others.length - 1) {
-          totals[key] = remaining - allocated;
-          return;
-        }
-        const portion = Math.round((totals[key] / currentOtherTotal) * remaining);
-        totals[key] = portion;
-        allocated += portion;
-      });
-    }
-    setNeeds(totals.needs);
-    setWants(totals.wants);
-    setFuture(totals.future);
+  const monthlyIncome = income === "" ? 0 : Number(income);
+  const totalPercentage = needs + wants + future;
+  const isValid = totalPercentage === 100 && monthlyIncome > 0;
+
+  const setters: Record<BucketKey, React.Dispatch<React.SetStateAction<number>>> = {
+    needs: setNeeds,
+    wants: setWants,
+    future: setFuture,
   };
 
-  const isValid = needs + wants + future === 100 && Number(income) > 0;
+  const adjustPercentage = (key: BucketKey, delta: number) => {
+    const setPercentage = setters[key];
+    setPercentage((prev) => Math.max(0, Math.min(100, prev + delta)));
+  };
+
+  const percentages = { needs, wants, future };
+  const amounts = {
+    needs: monthlyIncome * (needs / 100),
+    wants: monthlyIncome * (wants / 100),
+    future: monthlyIncome * (future / 100),
+  };
 
   const submit = async () => {
     if (!isValid) return;
@@ -59,7 +54,7 @@ export default function OnboardingPage() {
     setError(null);
     try {
       await api.financialProfile.create({
-        monthlyIncomeTarget: Number(income),
+        monthlyIncomeTarget: monthlyIncome,
         needsPercentage: needs,
         wantsPercentage: wants,
         futurePercentage: future,
@@ -80,73 +75,115 @@ export default function OnboardingPage() {
           We&apos;ll use the 50/30/20 rule to guide your spending buckets.
         </p>
       </div>
+
+      {/* Income Input */}
       <Card className="p-5">
-        <div className="space-y-2">
-          <Label htmlFor="income">What&apos;s your monthly income?</Label>
-          <Input
-            id="income"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={income}
-            onChange={(event) => setIncome(event.target.value)}
-          />
+        <div className="space-y-3 text-center">
+          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+            Monthly Income
+          </Label>
+          <div className="relative flex items-center justify-center">
+            <span className="text-3xl font-extrabold text-primary mr-2 font-mono">
+              $
+            </span>
+            <Input
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9,]*"
+              placeholder="0"
+              autoFocus
+              className="bg-transparent border-none text-center text-3xl font-extrabold font-mono focus:outline-none focus:ring-0 w-full placeholder:text-muted-foreground/20 text-foreground p-0"
+              value={formatNumberWithCommas(income)}
+              onChange={(e) => {
+                const rawValue = e.target.value;
+                const cleanValue = cleanNumber(rawValue);
+                if (cleanValue === "" || /^\d*\.?\d{0,2}$/.test(cleanValue)) {
+                  setIncome(cleanValue);
+                }
+              }}
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
             This helps us calculate your spending buckets.
           </p>
         </div>
       </Card>
+
+      {/* Allocation Buckets */}
       <Card className="p-5">
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Needs ({needs}%)</Label>
-              <span className="text-xs text-muted-foreground">Target 50%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={needs}
-              onChange={(event) => rebalance("needs", Number(event.target.value))}
-              className="w-full accent-[color:var(--chart-1)]"
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Wants ({wants}%)</Label>
-              <span className="text-xs text-muted-foreground">Target 30%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={wants}
-              onChange={(event) => rebalance("wants", Number(event.target.value))}
-              className="w-full accent-[color:var(--chart-2)]"
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Future ({future}%)</Label>
-              <span className="text-xs text-muted-foreground">Target 20%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={future}
-              onChange={(event) => rebalance("future", Number(event.target.value))}
-              className="w-full accent-[color:var(--chart-3)]"
-            />
-          </div>
-          {needs + wants + future !== 100 ? (
-            <p className="text-sm text-red-400">Total must equal 100%.</p>
-          ) : null}
+        <div className="space-y-3">
+          {BUCKETS.map((bucket) => {
+            const Icon = bucket.icon;
+            const amount = amounts[bucket.key];
+            const percentage = percentages[bucket.key];
+
+            return (
+              <div
+                key={bucket.key}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-background border border-border"
+              >
+                {/* Icon */}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${bucket.color}20` }}
+                >
+                  <Icon className="w-6 h-6" style={{ color: bucket.color }} />
+                </div>
+
+                {/* Label & Amount */}
+                <div className="flex-1 min-w-0">
+                  <p className={cn("font-semibold text-sm", bucket.textColor)}>
+                    {bucket.label}
+                  </p>
+                  <p className="text-lg font-bold text-foreground">
+                    ${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+
+                {/* Stepper Controls */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => adjustPercentage(bucket.key, -5)}
+                    disabled={percentage <= 0}
+                    className="w-9 h-9 rounded-full bg-border flex items-center justify-center text-foreground hover:bg-border/80 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-12 text-center font-bold text-sm">
+                    {percentage}%
+                  </span>
+                  <button
+                    onClick={() => adjustPercentage(bucket.key, 5)}
+                    disabled={percentage >= 100}
+                    className="w-9 h-9 rounded-full bg-border flex items-center justify-center text-foreground hover:bg-border/80 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Total Indicator */}
+        <div className={cn(
+          "text-center text-sm font-medium py-2 px-4 rounded-xl mt-4",
+          totalPercentage === 100
+            ? "text-needs bg-needs/10"
+            : "text-destructive bg-destructive/10"
+        )}>
+          Total: {totalPercentage}% {totalPercentage === 100 ? "✓" : "(needs to be 100%)"}
         </div>
       </Card>
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+      {error ? (
+        <p className="text-sm text-destructive text-center bg-destructive/10 p-3 rounded-xl">
+          {error}
+        </p>
+      ) : null}
+
       <Button
-        className="w-full"
+        className="w-full py-6 rounded-3xl font-bold text-lg"
         onClick={submit}
         disabled={!isValid || loading}
       >
