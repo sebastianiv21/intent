@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 import { authClient, signIn } from "@/lib/auth-client";
+import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,12 +27,9 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await signIn.email({
-        email,
-        password,
-        callbackURL: "/",
-      });
-      router.push("/");
+      await signIn.email({ email, password, callbackURL: "/" });
+      const redirectPath = await api.financialProfile.get().then(() => "/").catch(() => "/onboarding");
+      router.push(redirectPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in");
     } finally {
@@ -52,7 +50,7 @@ export default function LoginPage() {
             onClick={() =>
               authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/",
+                callbackURL: "/onboarding",
               })
             }
           >
